@@ -1,0 +1,12 @@
+
+[package]
+name = "calculate"
+version = "0.1.0"
+authors = ["sirmba<sirmba@jozi.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2.80"

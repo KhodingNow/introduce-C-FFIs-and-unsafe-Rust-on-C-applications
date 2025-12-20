@@ -252,7 +252,7 @@ First, lets look at what the C arithmetic calculator code looks like.
         return 1;
        }
 
-   'char line [100];' allocates space on the stack of the main function to store up to 100 characters for the date we're going to read in from the user. Since we 'fgetdon't need to access multiple lines of text at once, we keep reusing the same memory buffer over and over again. The function will clear it when it reads data from STDIN.
+'char line [100];' allocates space on the stack of the main function to store up to 100 characters for the date we're going to read in from the user. Since we 'fgetdon't need to access multiple lines of text at once, we keep reusing the same memory buffer over and over again. The function will clear it when it reads data from STDIN.
 
 
 'fgets' reads the data from STDIN and takes a char pointer as its first argument, which should point to the allocated memory where the data from the file will be read to. The memory must have allocated space for at least as many characters as the second argument. Because we allocated space for 100 characters, we give 100 as the second argument. 
@@ -261,4 +261,102 @@ C pointers and their associated memory don't contain data on where the allocated
  
 'solve' returns 'int', which is a status code. 0 means the function worked correctly, and 1 means that the string did not parse as expected.
 
+If we put this code ina file called 'calculator.c' and run it , it will solve simple arithmetic problems as expected:
 
+    $ gcc calculator.c -o calculator
+    $ ./calculator 
+    > 3 40 *
+    120
+    > 120 3 /
+    40 
+    > 40 1345 * 
+    53800
+    > 53800 3 /
+    17933
+
+It does great with these simple expressions, but what happens if we try to add extra operations ?
+
+    > 3 40 * 2 -
+    120 
+    > 10 10 * 10 *
+    100
+    > 10 10 * hello
+    
+    100
+
+Anything after the first three item is ignored. Remember that we have been tasked with adding support to multiple operations in a single expression to thhis calculator.Let's see whether we can extract a key component from it and move it into Rust.
+
+The first step is to identify what we want to extract.Given the fact that our program here has two functionsand one of them is the 'main' function., we should start by moving the solve function into Rust.
+
+
+Let us start a new project with the Cargo command, this will will create a project with a ' main.rs' entry point - something that can run directly as an executable. We are not creating an executable, instead, we want to create a LIBRARY. So, we need to provide an additional flag to 'cargo new' to indicate this desire:
+
+    cargo new --lib calculate
+    
+Open this newly created calculate/src/lib.rs file, and wecan begin.Recall that when creating an executable, newly created 'main.rs' files include the "Hello World" programby default. 
+Similarly, when creating a library, Cargo will fill our 'lib.rs' file with basic unit tests scaffolding, which we can use to validate the functionality of our program.      
+When we bring over the functionality of the 'solve' function from C to Rust, we need to provide our C code with a function that has the same SIGNATURE as the old 'solve' function.
+The SIGNATURE of a function refers to the types of all the values that a function accepts as parameters and returns, as aweel as the semantic meanings of those values. Recall the signature of our C function:
+
+
+    int solve(char *line, int *solution)
+
+For our C code to call a Rust function, we need to write a Rust function that accepts a 'char' pointer and an 'int'pointer as parameters and returns an 'int'
+
+Here is what that same signature will look like in Rust:
+
+    fn solve(line: *const c_char, solution: *mut c_int) -> c_int
+
+We can already glean more information from our Rust function's signature than from the signature of the C function.The Rust function tells the value of solutions may be modified inside the function and the value of line will not be modified. The C code provides no indication, other than reading the code, that solution will be modified by the solve function.
+A developer can always add comments, of course, but comments may be inaccurate or become out of date.
+
+The 'c_char' and 'c_int' types in the function signature are not built into the Rust standard library; they need to be imported from the libc crate. Crates are the Rust term for packages or libraries - collections of functions and types that can be used by others to perform certain tasks.
+The libc crate provides raw FFi bindings to the C standard library.The C standard does provide some relative sizing guarantees.For example, int is always at least as large as 'short int', but beyond that, a C int is platform specific. libc abstracts over some of this platform-specific nature by providing Rust types for the C primitives, whose sizingis determined by the platform on which they were compiled.
+
+Since many Rust programs don't need to intercat with C libraries, this functionality is not included in the standard library and is instead in an external library. 
+
+Including a crate.
+
+When we've used Cargo in the past, its been to create a new Rust package or to compile and run a Rust progrom. However, Cargo can do so much more than that.Cargo can also download, compile, and link dependencies and perform many other functions that would normally require lots of configurations in C or C++ programs.It is an all-in-one program for interacting with Rust. For now, we are going to ask Cargo to include (libc) when compiling our 'calculate' crate.
+
+Cargo's configuration file is (Cargo.toml). All the information that Cargo needs about how to compile a crate is contained herein.It contains compiler feature sets to activate, third-party crates to download/compile and their versions, conditional compilation flags, and information that you need to include if you're creating a crate you want others to be able to use (e.g, your contact info, readme, version information, etc).
+
+The [dependencies] section is the most commonly used section of the file for most Rust developers.Under this line, we type the name and version number of the crate we wish to include. Subsequently, when we use Cargo commands that compile our Rust program, Cargo will download the appropriate version of the creates we requested, compile them, and link them with our crate.
+We don't need to worry about setting compiler flags.There is no separeate step; just write the crate you want, and Cargo will get them.
+
+To search for available crates....look at (crates.io).When Cargo is used to build and publish packages, they go (by default) to crates.io.Here you can see all the publicly available crates that you can use when building Rust applications and crates of your own.
+
+To include (libc) in our calculate crate, let's add a line under the [dependencies] section.Dependencies are specified with the name of the package, an equals sig(=), and the version of the package you'd like to use. 
+
+NB: (libc may change versions depending on futher developments and software update)
+
+Creating a dynamic library with Rust.
+
+Libraries are a collection of functions, types, variables, or other things depending on what your programming language supports, which are packaged up together to accomplish some functionalityso you won't need to re-implement it each time you want to use it.
+
+For example, if you want to perform HTTP requests in Python, you might use the 'requests' library, or in C, you could use 'libcurl'.
+
+It's much easier to import a library to make HTTP requests than it is to use raw sockets and read/write system calls.
+
+Different programming languages have different formats for libraries. For example, Python libraries are simply collections of Python source code files, which the Python intepreter reads when imported.
+In C, there are a few different types of libraries, but the most commonly used on Unix-like operating systems, andthe type that we'll focus on is the dynamic library.
+
+We need to take SEVERAL steps before our Rust 'solve' function can be called from our C program.
+
+1. Tell Cargo to compile our crate as a dynamic library that the C linker understands.
+2. Add our newly created dynamic library to the linker search path.
+3. Mark our Rust 'solve' function so that the Rust compiler knows to compile iyt with C calling conventions.
+4. Recompile our C program using the 'solve' function from our Rust dynamic library.
+
+Walking through the steps:
+
+CREATING THE DYNAMIC LIBRARY.
+
+When Cargo compiles a Rust crate, by default, it doesn't produce something that a C compiler knows how to use.It generates something called an 'rlib' file, which is a typ of file specific to the Rust compilerand only used as an intermediate artifact that will be later used in some other Rust compilation.
+
+Instead of an rlib, we want Cargo to generate a dynamic library that the C linker knows how to use. We need to make another edit to our Cargo.toml file.
+The time we will ytell it to output something compatible with C.   
+
+Cargo can generate many different type of crates, but the most common are the default 'rlib' and the 'cdylib', which will cause Cargo to build a dynamic library compatible with native C programs.
+
+Then, lets run Cargo build again...
