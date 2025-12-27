@@ -1,14 +1,68 @@
 use libc::{c_char, c_int};
 use std::ffi::CStr;
+use std::collections::VecDeque;
 
 
 // Updating the solve function to call the new evealuate func
 
-enum Error {
-    
+#[derive(Debug)] 
+struct RpnStack {
+    stack: VecDeque<i32>,
 }
 
+enum Error {
+    InvalidNumber,
+    PopFromEmptyStack,    
+}
+
+impl RpnStack {
+    fn new() -> RpnStack {
+       RpnStack {
+        stack: VecDeque::new(),
+       }
+    }
+    fn push(&mut self, value: i32) {
+        self.stack.push_front(value);
+    }
+
+    fn pop(&mut self) -> Result<i32, Error> {
+        match self.stack.pop_front() {
+            Some(value) => Ok(value),
+            None => Err(Error::PopFromEmptyStack),
+        }
+    }
+}
+
+
 fn evaluate(problem: &str) -> Result<i32, Error> {
+    let mut stack = RpnStack::new() // new data structure
+        /*println!("problem: {:p}", problem.as_ptr());
+        
+        checks IF memory is borrowed from the C stack as 
+        per &str
+        */
+
+    for term in problem.trim().split(' ') {
+        //println!("problem: {:?}", term.as_ptr()); 
+        
+       // println!("Term - {:?}", term);
+        
+        match term {
+            "+" => println!("ADD"),
+            "-" => println!("SUB"),
+            "*" => println!("MUL"),
+            "/" => println!("DIV"),
+                
+          // other => match other.parse::<i32>(),
+            
+            other => match other.parse() {
+                Ok(value) => println!("NUM {}", value),
+                Err(_) => return Err(Error::InvalidNumber),
+            },
+        }
+        // println!("{term}");
+    }
+
     Ok(1)
 }
 
