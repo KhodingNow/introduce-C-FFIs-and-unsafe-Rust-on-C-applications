@@ -48,9 +48,9 @@ Imagine running this C program on a theoretical computer that has a single-byte 
 
 visual of the stack:
 
-[0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x07]
+[0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]
 
-0       1     2     3      4     5     6     7    8
+0       1     2     3      4     5     6     7   
 
  - no code has been executed , so the stack is EMPTY.
 
@@ -63,7 +63,7 @@ visual of the stack:
 
 [ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 ]
 
- 'a'      1     2     3     4     5     6      7     8
+ 'a'      1     2     3     4     5     6      7 
 
 we store the character 'a' in the first position on the stack
 
@@ -360,3 +360,58 @@ The time we will ytell it to output something compatible with C.
 Cargo can generate many different type of crates, but the most common are the default 'rlib' and the 'cdylib', which will cause Cargo to build a dynamic library compatible with native C programs.
 
 Then, lets run Cargo build again...
+
+    ......(here i encountered trouble, debugging for the rest of the day.Getting Cargo and the dynamic lib (cdylib) for those C pointers was a mission, all of a sudden my byuilds were bugged.... at last, they worked. Huge learnings)
+
+MARKING THE SOLVE FUNCTION AS C-LINKABLE
+
+Even though we asked Rust to compile the 'calculate' crate as a 'cdylib', it does not export every function and type in a C-compatible format. It only exports the specific functions and types that we ask it to. Three steps are required to make a Rust function callable from C. We need to:
+- Disable name mangling
+- Mark the function as public
+- Tell the Rust compiler to use C calling conventions for the function.
+
+Below is a Rust function that can be exported as compatible with C.
+
+    #[no_mangle]
+    pub extern "C" fn solve(
+        line: *const c_char, solution: *mut c_int) -> c_int {
+     0
+        }  
+
+What do the new ELEMENTS mean ?
+
+1. #[no_mangle], is a function attribute macro, which instructs the compiler to not perform name mangling on this function.If you've done much C++ development, you may be familiar with the concept of name mangling.
+If, not, name mangling refers to a process that the compiler uses to ensure that functions and type names are unique inside of a system library or executable.
+
+On Unix-like systems, executables and system libraries d not have namespaces. Thus, if we define a solve function in our executable, there can only ever be a single solve function across all libraries there we're using and across all files.
+If any library has an internal function called solve, it will conflict with the one we're trying to create.
+
+To overcome this problem, the Rust compiler puts extra nformation into the name of the symbols within it, which ensures that no symbol names overlap.If we leave name manglingenabled, our Rust 'solve' function will be given 
+a name like: _ZN9calculate5solve17h6ed798464632de3fE.
+The method that the compiler uses to create these unique names is unimportant for our purposes here.
+It suffices to know that predicting these mangled names is very difficult and unwieldly.Therefore, if we expect to call any Rust functions from C, which has no understanding of Rust's name-mangling scheme, we must uso 'no_mangle" to disable it for those specific functions.
+
+The next new bit of code, (pub), is a very common Rust keyword. It tells the Rust compiler that the symbol should be exported outside of the module in which it is defined.
+By default, all symbols in Rust are private and unexpected.The way to export a function or type is to add the (pub) keyword before its definition, as we have done in the example. 
+
+Finally, we have 'extern "C"', which tells Rust to generat to generate the  'solve' function using C-compatible calling conventions.By default, the Rust compiler's calling conventions are not strictly compatible with C's.Rust suports a number of different calling conventions, but the most commonly used is the default Rust convention, followed by "C".
+
+NB: what each oiece of syntax is responsible for.
+
+1. Function attribute macro: ->  #[no_mangle]
+                         this disables name mangling
+
+
+2. Exports function (publicly)
+
+                  pub extern "C" fn solve
+
+                               [ Uses C calling convention] 
+
+This is an anatomy of a C-compatible function declaration
+
+RECOMPILING THE C PROGRAM AGAINST OUR RUST DYNAMIC LIBRARY
+
+
+ 
+

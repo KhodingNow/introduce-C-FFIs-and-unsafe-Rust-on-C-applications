@@ -1,0 +1,50 @@
+We have confirmed that Rust shares memory with the C stack for time and memory efficiency gains with the use of the &str type.
+
+Now we need take the terms that are not operators and try to parse them as integers. We can do this using the '.parse' method, available on strings. The '.parse' method is generic over over its return type, this means it could return an int of varying sizes, a floating-point number, or a great deal of other types.
+
+We need to tell the parse method the return type we want, which will determine the parsing logic it will use.
+We will also need to add a variant to our 'Err' enum to account for the possible failure of '.parse':  
+
+At this stage, we want to begin exploring how we might start doing maths. Since our calculator is parsing RPN expressionas, we need a simple stack data STRUCTURE, implemented on top of the double-ended queue. Rust's standard library provides a double-ended queue in the form of the 'VecDeque' type.
+A VecDeque is a double-ended backed by a standard Vec growable array. The main difference between the more general Vec and VecDeque is that VecDeque provides double-ended operations, like 'push_front, push_back, pop_front, and pop_back'.
+By comparison, Vec only provides 'push and pop' methods, which provide first in last out (FIFO) ordering.
+Since we're implementing a stack, we need to use the push_front and pop_front methods from VecDeque to provide last in , first out(LIFO) ordering.
+
+We are going to create a wrapper type around VecDeque to provide some functionality that is specific to the needs of our RPN solver.
+This type is called 'RpnStack'.Also, since VecDeque is not used quite as commonly as Vec, we'll need to import it explicitly from the standard library:
+use std::collections::VecDeque;
+
+#[derive(Debug)] //
+struct RpnStack {
+  stack: VecDeque<i32>,
+}
+ 
+ #[derive] is a macro that instructs the compiler to generate code for a struct or enum.
+ 
+ In this case, it's an implementation of the 'Debug' trait, which allows us to print out our 'RpnStack' using the Debug formatter. Although, it's possible to manually write this code, its easier (especially for types with many fields) to allow the compiler to generate it automatically.
+
+ Adding dome methods to perform the standard stack operations of push and pop: they add a new number to the top of the stack and remove the top number from the stack, respectively.
+ We will also add an Error variant to mark the error of popping from an empty stack:    
+
+
+impl blocks contain the methods that can be called on a given type. If you're coming from another language like Python or Java, where function definitions live within the same block as the class definition, this may seem odd, but the flexibility that comes from having separate impl blocks is very worthwile.
+
+Note that 'push' and 'pop' have a '&mut self' parameter on them, and new does not. 'push and pop' are METHODS that operate on a specific instance of 'RpnStack', whereas new is a function that does not take an instance as its input. Functions within impl blocks are similar to static methods in Java or class methods in Python. impl blocks can contain both methods and functions, the only difference is the presence or absence of the leading self paprameter, similar to Python methods, which have have a leading self parameter. 
+
+In languages like Java, JS, Ruby and C++, a 'self or this'variable may be available within methods, but it is not marked as an explicit parameter.
+It is required in Rust bcs of Rust's explicit rules around mutability and ownership control.
+self parameters can take many forms: they can be owned 'self' values, immutable references (&self), or, as we see here, mutable self references(&mut self).
+
+The &mut self is required for both methods because they both mutate the stack field of our 'RpnStack' value.
+You can only call push or pop if you have a mutable reference to the RpnStack.
+
+With these methods, we should be able to implement our evaluate function. We can start by pushing integer values onto the stack and printing them out afterward.
+
+Also, instead of always returning 1, we can start returning the top value on the stack:
+
+Note that we no longer need to explicitly hint that 'parse' should return an i32. We take the returned value variable and immediately pass the pusg method.This method only accepts an i32 as its input, so the compiler will reason that 'parse' must return an i32 to be valid.
+The Rust compiler works very hard to try to save us from writing types over and over again. 
+    
+
+We now have numerical storage, we should be able to implement addition.Remember that, in RPN maths, we need to pop two values off the stack, add them together, and put the result back onto the stack:
+

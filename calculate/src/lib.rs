@@ -35,7 +35,7 @@ impl RpnStack {
 
 
 fn evaluate(problem: &str) -> Result<i32, Error> {
-    let mut stack = RpnStack::new() // new data structure
+    let mut stack = RpnStack::new(); // new data structure
         /*println!("problem: {:p}", problem.as_ptr());
         
         checks IF memory is borrowed from the C stack as 
@@ -48,7 +48,15 @@ fn evaluate(problem: &str) -> Result<i32, Error> {
        // println!("Term - {:?}", term);
         
         match term {
-            "+" => println!("ADD"),
+        
+          "+" => {
+
+            let y = stack.pop()?;
+            let x = stack.pop()?;
+
+            stack.push(x + y);
+              
+          }
             "-" => println!("SUB"),
             "*" => println!("MUL"),
             "/" => println!("DIV"),
@@ -56,14 +64,17 @@ fn evaluate(problem: &str) -> Result<i32, Error> {
           // other => match other.parse::<i32>(),
             
             other => match other.parse() {
-                Ok(value) => println!("NUM {}", value),
+                Ok(value) => stack.push(value),
+              // println!("STACK: {:?}", stack);
+                
                 Err(_) => return Err(Error::InvalidNumber),
-            },
-        }
-        // println!("{term}");
-    }
-
-    Ok(1)
+                }
+            }
+        }        
+  
+    
+    let value = stack.pop()?;
+    Ok(value)
 }
 
 
